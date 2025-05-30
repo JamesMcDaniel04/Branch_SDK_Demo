@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="untitled2">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>untitled2</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Branch Web SDK -->
+  <script>
+    // Load Branch
+    (function(b,r,a,n,c,h,_,s,d,k){if(!b[n]||!b[n]._q){for(;s<_.length;)c(h,_[s++]);d=r.createElement(a);d.async=1;d.src="https://cdn.branch.io/branch-latest.min.js";k=r.getElementsByTagName(a)[0];k.parentNode.insertBefore(d,k);b[n]=h}})(window,document,"script","branch",function(b,r){b[r]=function(){b._q.push([r,arguments])}},{_q:[],_v:1},"addListener banner closeBanner closeJourney data deepview deepviewCta first init link logout removeListener setBranchViewData setIdentity track trackCommerceEvent logEvent disableTracking getBrowserFingerprintId crossPlatformIds lastAttributedTouchData setAPIResponseCallback qrCode setRequestMetaData setAPIUrl getAPIUrl setDMAParamsForEEA".split(" "), 0);
+  </script>
+
+  <!-- Initialize Branch when Flutter app loads -->
+  <script>
+    // Override the Flutter bootstrap to initialize Branch first
+    window.addEventListener('load', function() {
+      // Initialize Branch with debug mode
+      if (window.branch) {
+        // Enable debug logging
+        branch.enableLogging && branch.enableLogging();
+
+        branch.init('key_live_gFCda8Aet0YzyHBUFri9emppxAfS9xt0', function(err, data) {
+          if (err) {
+            console.error('Branch initialization error:', err);
+          } else {
+            console.log('Branch initialized successfully:', data);
+            window.branchData = data;
+          }
+          loadFlutterApp();
+        });
+      } else {
+        console.warn('Branch not available, starting Flutter app anyway');
+        loadFlutterApp();
+      }
+    });
+
+    function loadFlutterApp() {
+      // Load the flutter_bootstrap.js script dynamically after Branch is ready
+      var script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  </script>
+</head>
+<body>
+<!-- Remove the original flutter_bootstrap.js script since we're loading it dynamically -->
+<!-- <script src="flutter_bootstrap.js" async></script> -->
+</body>
+</html>

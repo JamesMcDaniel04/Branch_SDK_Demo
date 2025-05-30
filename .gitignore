@@ -1,0 +1,26 @@
+# Flutter/Dart generated files
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# iOS generated files
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+
+# macOS generated files  
+macos/Pods/
+macos/Podfile.lock
+
+# Android generated files
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# IDE files
+.vscode/
+.idea/
+*.iml
