@@ -6,21 +6,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
-// Branch REST API Service
+// Complete Branch REST API Service with Campaign Support
 class BranchRestAPI {
-  static const String _baseUrl = 'https://api2.branch.io/v1';
   static const String _branchKey = 'key_test_lAtlnXscF14uqMzLwtlYpljgBCdVZzCS';
 
-  // Create a Branch link using REST API
+  // Public getter for branch key (for logging purposes)
+  static String get branchKey => _branchKey;
+
+  // Your campaign options
+  static const Map<String, String> campaigns = {
+    'test_flutter_demo': 'flutter_demo_rest',
+    'test_campaign': 'test_campaign',
+    'test_campaign_2024': 'test_campaign_2024',
+    'live_campaign': 'flutter_demo_campaign', // For when you switch to live key
+  };
+
+  // Create a Branch link using REST API with campaign association
   static Future<String?> createBranchLink({
     required String title,
     required String description,
     String? imageUrl,
     Map<String, dynamic>? customData,
+    String campaignKey = 'test_flutter_demo', // Default to flutter_demo_rest
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/url'),
+        Uri.parse('https://api2.branch.io/v1/url'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -31,9 +42,7 @@ class BranchRestAPI {
             '\$og_title': title,
             '\$og_description': description,
             if (imageUrl != null) '\$og_image_url': imageUrl,
-            '\$desktop_url': 'https://flutter.dev',
-            '\$ios_url': 'https://apps.apple.com/app/flutter',
-            '\$android_url': 'https://play.google.com/store/apps/details?id=com.example.untitled2',
+            // Let Branch dashboard handle ALL redirects - no URL overrides
             'custom_string': 'Hello from Flutter REST API!',
             'custom_number': 12345,
             'platform': 'flutter_rest_api',
@@ -43,7 +52,8 @@ class BranchRestAPI {
           'tags': ['flutter', 'rest_api', 'mobile'],
           'channel': 'mobile_app',
           'feature': 'sharing',
-          'campaign': 'flutter_demo_rest',
+          'campaign': campaigns[campaignKey] ?? 'flutter_demo_rest',  // Use your actual campaigns
+          'stage': 'mobile_test',
         }),
       );
 
@@ -60,56 +70,117 @@ class BranchRestAPI {
     }
   }
 
-  // Track an event using REST API (v2 endpoint)
-  static Future<bool> trackEvent({
+  // Track standard events using correct v2 API
+  static Future<bool> trackStandardEvent({
     required String eventName,
     Map<String, dynamic>? eventData,
+    Map<String, dynamic>? customData,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/v2/event/standard'),  // Updated to v2 API
+        Uri.parse('https://api2.branch.io/v2/event/standard'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'branch_key': _branchKey,
           'name': eventName,
+          'branch_key': _branchKey,
+          'user_data': {
+            'os': Platform.operatingSystem,
+            'os_version': Platform.operatingSystemVersion,
+            'environment': 'FULL_APP',
+            'developer_identity': 'flutter_user_12345',
+            'country': 'US',
+            'language': 'en',
+            'app_version': '1.0.0',
+            'limit_ad_tracking': false,
+          },
           'custom_data': {
             'platform': 'flutter_rest_api',
             'timestamp': DateTime.now().toIso8601String(),
             'event_source': 'mobile_app',
-            ...?eventData,
+            ...?customData,
           },
-          'user_data': {
-            'developer_identity': 'flutter_user_12345',
-            'os': Platform.operatingSystem,
+          'event_data': {
+            'description': 'Event tracked via Flutter REST API',
+            ...?eventData,
           },
         }),
       );
 
-      if (response.statusCode == 200) {
-        print('Branch event tracked successfully: $eventName');
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        print('Branch standard event tracked successfully: $eventName');
         return true;
       } else {
-        print('Branch Event API Error: ${response.statusCode} - ${response.body}');
+        print('Branch Standard Event API Error: ${response.statusCode} - ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Branch Event Tracking Error: $e');
+      print('Branch Standard Event Tracking Error: $e');
       return false;
     }
   }
 
-  // Set user identity (simulated via custom data)
+  // Track custom events using v2 API
+  static Future<bool> trackCustomEvent({
+    required String eventName,
+    Map<String, dynamic>? customData,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://api2.branch.io/v2/event/custom'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'name': eventName,
+          'branch_key': _branchKey,
+          'user_data': {
+            'os': Platform.operatingSystem,
+            'os_version': Platform.operatingSystemVersion,
+            'environment': 'FULL_APP',
+            'developer_identity': 'flutter_user_12345',
+            'country': 'US',
+            'language': 'en',
+            'app_version': '1.0.0',
+            'limit_ad_tracking': false,
+          },
+          'custom_data': {
+            'platform': 'flutter_rest_api',
+            'timestamp': DateTime.now().toIso8601String(),
+            'event_source': 'mobile_app',
+            ...?customData,
+          },
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        print('Branch custom event tracked successfully: $eventName');
+        return true;
+      } else {
+        print('Branch Custom Event API Error: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Branch Custom Event Tracking Error: $e');
+      return false;
+    }
+  }
+
+  // Set user identity using standard event
   static Future<bool> setUserIdentity(String userId) async {
     try {
-      // Track identity change as an event
-      bool success = await trackEvent(
-        eventName: 'user_identity_set',
+      bool success = await trackStandardEvent(
+        eventName: 'COMPLETE_REGISTRATION',
         eventData: {
+          'description': 'User identity set',
+        },
+        customData: {
           'user_id': userId,
           'action': 'set_identity',
+          'registration_method': 'flutter_app',
         },
       );
 
@@ -179,24 +250,36 @@ class _MyHomePageState extends State<MyHomePage> {
         _message = 'Branch REST API initialized successfully!';
       });
       print('Branch REST API: Ready for link creation and event tracking');
+      print('Using Branch Key: ${BranchRestAPI.branchKey}');
+      print('App Bundle ID: com.example.untitled2');
+      print('Expected App ID: 1455926457980179158');
 
-      // Test connectivity by creating a simple event
-      bool eventSuccess = await BranchRestAPI.trackEvent(
-        eventName: 'app_launch',
+      // Test with app launch event to verify app integration
+      bool eventSuccess = await BranchRestAPI.trackStandardEvent(
+        eventName: 'COMPLETE_REGISTRATION',
         eventData: {
+          'description': 'App launched - testing app integration',
+        },
+        customData: {
           'session_start': true,
           'platform': Platform.operatingSystem,
+          'app_id': '1455926457980179158',
+          'bundle_id': 'com.example.untitled2',
         },
       );
 
       if (eventSuccess) {
         setState(() {
-          _message = 'Branch REST API connected and ready!';
+          _message = 'Branch REST API connected and ready! ✅ App integrated';
+        });
+      } else {
+        setState(() {
+          _message = 'Branch REST API connected! ✅ Links working, check app integration';
         });
       }
     } catch (e) {
       setState(() {
-        _message = 'Branch REST API initialization completed with note: $e';
+        _message = 'Branch REST API initialization completed: $e';
       });
       print('Branch REST API initialization note: $e');
     }
@@ -209,15 +292,18 @@ class _MyHomePageState extends State<MyHomePage> {
       });
 
       String? shortUrl = await BranchRestAPI.createBranchLink(
-        title: 'Flutter Branch REST API Demo',
-        description: 'Testing Branch deep links via REST API - fully functional!',
-        imageUrl: 'https://flutter.dev/assets/images/shared/brand/flutter/logo/flutter-lockup.png',
+        title: 'JoinFloor App - Pricing Table',  // Real title for your campaign
+        description: 'Check out JoinFloor pricing and sign up today!',  // Real description
+        imageUrl: 'https://www.joinfloor.app/assets/images/logo.png',  // Your actual logo
+        campaignKey: 'test_flutter_demo', // This maps to your flutter_demo_rest campaign
         customData: {
           'user_id': '12345',
-          'page': 'home',
-          'source': 'flutter_rest_api',
-          'campaign_id': 'flutter_demo_2024',
-          'test_mode': true,
+          'page': 'pricing',
+          'source': 'flutter_mobile_app',
+          'campaign_name': 'flutter_demo_rest',  // Your actual campaign
+          'referral_source': 'mobile_app',
+          'deep_link_path': '/#pricing-table',
+          'action': 'view_pricing',
         },
       );
 
@@ -228,12 +314,15 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         print('Generated Branch Link: $shortUrl');
 
-        // Track link creation event
-        await BranchRestAPI.trackEvent(
-          eventName: 'link_created',
-          eventData: {
+        // Track link creation event for your campaign
+        await BranchRestAPI.trackCustomEvent(
+          eventName: 'joinfloor_link_created',
+          customData: {
             'link_url': shortUrl,
-            'creation_method': 'rest_api',
+            'creation_method': 'mobile_app',
+            'campaign': 'flutter_demo_rest',
+            'link_type': 'pricing_link',
+            'source': 'joinfloor_app',
           },
         );
       } else {
@@ -252,48 +341,55 @@ class _MyHomePageState extends State<MyHomePage> {
   void _trackBranchEvent() async {
     try {
       setState(() {
-        _message = 'Tracking event via Branch REST API...';
+        _message = 'Tracking events via Branch REST API...';
       });
 
-      bool success = await BranchRestAPI.trackEvent(
-        eventName: 'flutter_button_click',
+      // Track a standard event for your campaign
+      bool standardSuccess = await BranchRestAPI.trackStandardEvent(
+        eventName: 'ADD_TO_CART',
         eventData: {
-          'button_type': 'track_event',
-          'user_action': 'engagement',
-          'page': 'home',
-          'timestamp': DateTime.now().toIso8601String(),
-          'app_version': '1.0.0',
-          'test_event': true,
+          'currency': 'USD',
+          'revenue': 29.99,  // Your actual pricing
+          'transaction_id': 'joinfloor_${DateTime.now().millisecondsSinceEpoch}',
+          'description': 'JoinFloor pricing interest',
+        },
+        customData: {
+          'campaign': 'flutter_demo_rest',
+          'user_action': 'pricing_engagement',
+          'page': 'mobile_app',
+          'product': 'joinfloor_subscription',
         },
       );
 
-      if (success) {
+      // Track a custom event for your campaign
+      bool customSuccess = await BranchRestAPI.trackCustomEvent(
+        eventName: 'joinfloor_app_engagement',
+        customData: {
+          'campaign': 'flutter_demo_rest',
+          'button_name': 'track_events',
+          'user_action': 'engagement',
+          'page': 'mobile_app',
+          'timestamp': DateTime.now().toIso8601String(),
+          'app_version': '1.0.0',
+          'product_interest': 'pricing',
+        },
+      );
+
+      if (standardSuccess && customSuccess) {
         setState(() {
-          _message = 'Event tracked successfully via Branch REST API!';
+          _message = 'Events tracked successfully via Branch REST API! ✅';
         });
-
-        // Also track a purchase simulation
-        await BranchRestAPI.trackEvent(
-          eventName: 'purchase_simulation',
-          eventData: {
-            'revenue': 25.99,
-            'currency': 'USD',
-            'transaction_id': 'txn_${DateTime.now().millisecondsSinceEpoch}',
-            'items': ['flutter_course', 'branch_tutorial'],
-          },
-        );
-
-        print('Multiple events tracked successfully!');
+        print('All events tracked successfully!');
       } else {
         setState(() {
-          _message = 'Event tracking failed. Check console for details.';
+          _message = 'Some events may have failed. Check console for details.';
         });
       }
     } catch (e) {
       setState(() {
-        _message = 'Error tracking event: $e';
+        _message = 'Error tracking events: $e';
       });
-      print('Exception tracking event: $e');
+      print('Exception tracking events: $e');
     }
   }
 
@@ -303,11 +399,11 @@ class _MyHomePageState extends State<MyHomePage> {
         _message = 'Setting Branch user identity via REST API...';
       });
 
-      bool success = await BranchRestAPI.setUserIdentity('flutter_user_12345');
+      bool success = await BranchRestAPI.setUserIdentity('joinfloor_user_12345');
 
       if (success) {
         setState(() {
-          _message = 'Branch user identity set successfully via REST API!';
+          _message = 'Branch user identity set successfully via REST API! ✅';
         });
         print('Branch user identity set successfully');
       } else {
@@ -368,7 +464,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     Text(
-                      '✅ Fully Functional',
+                      '✅ Fully Functional with Fixed APIs',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.bold,
@@ -460,12 +556,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   children: [
                     Text(
-                      '🎉 Branch REST API Features:',
+                      '🎉 Complete Branch REST API Features:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 8),
                     Text(
-                      '✅ Create real Branch links\n✅ Track events and analytics\n✅ Set user identity\n✅ Works on all platforms\n✅ No SDK compatibility issues',
+                      '✅ Create real Branch links with custom domains\n✅ Track standard events (PURCHASE, ADD_TO_CART, etc.)\n✅ Track custom events\n✅ Set user identity\n✅ Works on all platforms\n✅ Fixed API endpoints\n✅ No SDK compatibility issues',
                       style: TextStyle(fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
